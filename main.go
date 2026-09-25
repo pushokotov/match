@@ -96,14 +96,14 @@ func phoneAuthHandler(store *SessionStore) bot.HandlerFunc {
 func tokenAuthHandler(store *SessionStore) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		answerCallback(ctx, b, update)
-		if update.CallbackQuery == nil || update.CallbackQuery.Message == nil {
+		if update.CallbackQuery == nil || update.CallbackQuery.Message.Message == nil {
 			return
 		}
 		s := store.Get(update.CallbackQuery.From.ID)
 		s.mu.Lock()
 		s.State = StateToken
 		s.mu.Unlock()
-		sendText(ctx, b, update.CallbackQuery.Message.Chat.ID, "Enter Tinder auth token:")
+		sendText(ctx, b, update.CallbackQuery.Message.Message.Chat.ID, "Enter Tinder auth token:")
 	}
 }
 
