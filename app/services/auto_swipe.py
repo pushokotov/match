@@ -1,16 +1,18 @@
 from dataclasses import dataclass
+from typing import Any
 
 from app.services.matches import MatchService
 from app.services.recommendations import RecommendationService
 from app.services.swipe import SwipeService
+from app.tinder.models import MatchStats, SwipeResult
 
 
 @dataclass(frozen=True)
 class AutoSwipeResult:
-    swipe_result: object
-    match_stats: object
+    swipe_result: SwipeResult
+    match_stats: MatchStats
     recommendations_received: int
-    location: object
+    location: Any
 
 
 class AutoSwipeService:
@@ -31,8 +33,8 @@ class AutoSwipeService:
     def run(self, city: str) -> AutoSwipeResult:
         location = self.location_service.set_city(city)
 
-        # The first recommendation batch is deliberately fetched before
-        # taking the match snapshot and before any swipe is performed.
+        # Fetch recommendations before taking the match snapshot and before
+        # performing any swipe, as required by the AutoSwipe flow.
         first_batch = self.recommendations.get_batch()
         before = self.matches.snapshot()
 
