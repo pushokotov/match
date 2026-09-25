@@ -15,21 +15,19 @@ def _services(message: types.Message, sessions: TinderSessionManager):
     return AuthService(client), ProfileService(client)
 
 
-async def phone_start(
-    callback: types.CallbackQuery,
-    state: FSMContext,
-) -> None:
+async def phone_start(callback: types.CallbackQuery, state: FSMContext) -> None:
     await AuthStates.waiting_phone.set()
-    await callback.message.answer("Отправь номер телефона в международном формате, например +31612345678.")
+    await callback.message.answer(
+        "Отправь номер телефона в международном формате, например +31612345678."
+    )
     await callback.answer()
 
 
-async def token_start(
-    callback: types.CallbackQuery,
-    state: FSMContext,
-) -> None:
+async def token_start(callback: types.CallbackQuery, state: FSMContext) -> None:
     await AuthStates.waiting_test_token.set()
-    await callback.message.answer("Отправь Tinder token. Этот способ нужен только для тестирования.")
+    await callback.message.answer(
+        "Отправь Tinder token. Этот способ нужен только для тестирования."
+    )
     await callback.answer()
 
 
@@ -47,7 +45,10 @@ async def phone_received(
             parsed, phonenumbers.PhoneNumberFormat.E164
         )
     except (phonenumbers.NumberParseException, ValueError):
-        await message.answer("Не удалось распознать номер. Отправь его в международном формате, например +31612345678.")
+        await message.answer(
+            "Не удалось распознать номер. Отправь его в международном формате, "
+            "например +31612345678."
+        )
         return
 
     auth, _ = _services(message, sessions)
@@ -86,12 +87,9 @@ async def code_received(
 
     await state.finish()
     await message.answer(
-        f"Авторизация успешна!
-"
-        f"Профиль: {tinder_profile.name}
-"
-        f"Город: {tinder_profile.city}
-"
+        f"Авторизация успешна!\n"
+        f"Профиль: {tinder_profile.name}\n"
+        f"Город: {tinder_profile.city}\n"
         f"Страна: {tinder_profile.country}",
         reply_markup=main_keyboard(),
     )
@@ -112,17 +110,16 @@ async def token_received(
         auth.authenticate_with_token(token)
         tinder_profile = profile.get_profile()
     except Exception as exc:
-        await message.answer(f"Token не подошёл или Tinder API недоступен: {exc}")
+        await message.answer(
+            f"Token не подошёл или Tinder API недоступен: {exc}"
+        )
         return
 
     await state.finish()
     await message.answer(
-        f"Авторизация успешна!
-"
-        f"Профиль: {tinder_profile.name}
-"
-        f"Город: {tinder_profile.city}
-"
+        f"Авторизация успешна!\n"
+        f"Профиль: {tinder_profile.name}\n"
+        f"Город: {tinder_profile.city}\n"
         f"Страна: {tinder_profile.country}",
         reply_markup=main_keyboard(),
     )
@@ -135,15 +132,6 @@ def register(dp: Dispatcher, sessions: TinderSessionManager) -> None:
     dp.register_callback_query_handler(
         token_start, lambda c: c.data == "auth:token", state="*"
     )
-    dp.register_message_handler(
-        phone_received, state=AuthStates.waiting_phone, content_types=types.ContentType.TEXT
-    )
-    dp.register_message_handler(
-        code_received, state=AuthStates.waiting_code, content_types=types.ContentType.TEXT
-    )
-    dp.register_message_handler(
-        token_received, state=AuthStates.waiting_test_token, content_types=types.ContentType.TEXT
-    )
 
     async def phone_handler(message: types.Message, state: FSMContext):
         await phone_received(message, state, sessions)
@@ -155,11 +143,17 @@ def register(dp: Dispatcher, sessions: TinderSessionManager) -> None:
         await token_received(message, state, sessions)
 
     dp.register_message_handler(
-        phone_handler, state=AuthStates.waiting_phone, content_types=types.ContentType.TEXT
+        phone_handler,
+        state=AuthStates.waiting_phone,
+        content_types=types.ContentType.TEXT,
     )
     dp.register_message_handler(
-        code_handler, state=AuthStates.waiting_code, content_types=types.ContentType.TEXT
+        code_handler,
+        state=AuthStates.waiting_code,
+        content_types=types.ContentType.TEXT,
     )
     dp.register_message_handler(
-        token_handler, state=AuthStates.waiting_test_token, content_types=types.ContentType.TEXT
+        token_handler,
+        state=AuthStates.waiting_test_token,
+        content_types=types.ContentType.TEXT,
     )
