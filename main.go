@@ -60,7 +60,7 @@ func defaultHandler(store *SessionStore) bot.HandlerFunc {
 		if update.Message == nil {
 			return
 		}
-		textStateHandler(ctx, b, update)
+		textStateHandler(store)(ctx, b, update)
 	}
 }
 
