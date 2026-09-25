@@ -140,7 +140,7 @@ func (c *TinderClient) AuthWithCode(ctx context.Context, phone, code string) err
 }
 
 func extractAuthToken(body string) (string, error) {
-	re := regexp.MustCompile("\x12\$([^"]*)"\x18")
+	re := regexp.MustCompile(`\x12\$([^"]*)"\x18`)
 	m := re.FindStringSubmatch(body)
 	if len(m) != 2 {
 		return "", errors.New("could not extract Tinder auth token from response")
