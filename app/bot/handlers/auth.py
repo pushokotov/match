@@ -145,5 +145,21 @@ def register(dp: Dispatcher, sessions: TinderSessionManager) -> None:
         token_received, state=AuthStates.waiting_test_token, content_types=types.ContentType.TEXT
     )
 
-    for handler in (phone_received, code_received, token_received):
-        handler.__aiogram_extra__ = {"sessions": sessions}
+    async def phone_handler(message: types.Message, state: FSMContext):
+        await phone_received(message, state, sessions)
+
+    async def code_handler(message: types.Message, state: FSMContext):
+        await code_received(message, state, sessions)
+
+    async def token_handler(message: types.Message, state: FSMContext):
+        await token_received(message, state, sessions)
+
+    dp.register_message_handler(
+        phone_handler, state=AuthStates.waiting_phone, content_types=types.ContentType.TEXT
+    )
+    dp.register_message_handler(
+        code_handler, state=AuthStates.waiting_code, content_types=types.ContentType.TEXT
+    )
+    dp.register_message_handler(
+        token_handler, state=AuthStates.waiting_test_token, content_types=types.ContentType.TEXT
+    )
