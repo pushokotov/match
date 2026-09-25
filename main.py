@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 
-from app.bot.handlers import auth, location, profile, start
+from app.bot.handlers import auth, profile, start, swipe
 from app.services.session import TinderSessionManager
 
 
@@ -18,7 +18,7 @@ def create_dispatcher() -> Dispatcher:
     start.register(dp)
     auth.register(dp, sessions)
     profile.register(dp, sessions)
-    location.register(dp, sessions)
+    swipe.register(dp, sessions)
 
     return dp
 
