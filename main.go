@@ -82,14 +82,14 @@ func startHandler(store *SessionStore) bot.HandlerFunc {
 func phoneAuthHandler(store *SessionStore) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		answerCallback(ctx, b, update)
-		if update.CallbackQuery == nil || update.CallbackQuery.Message == nil {
+		if update.CallbackQuery == nil || update.CallbackQuery.Message.Message == nil {
 			return
 		}
 		s := store.Get(update.CallbackQuery.From.ID)
 		s.mu.Lock()
 		s.State = StatePhone
 		s.mu.Unlock()
-		sendText(ctx, b, update.CallbackQuery.Message.Chat.ID, "Enter a phone number connected to your Tinder account.")
+		sendText(ctx, b, update.CallbackQuery.Message.Message.Chat.ID, "Enter a phone number connected to your Tinder account.")
 	}
 }
 
@@ -338,8 +338,8 @@ func updateChatUser(update *models.Update) (int64, int64, bool) {
 	if update.Message != nil {
 		return update.Message.Chat.ID, update.Message.From.ID, true
 	}
-	if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
-		return update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.From.ID, true
+	if update.CallbackQuery != nil && update.CallbackQuery.Message.Message != nil {
+		return update.CallbackQuery.Message.Message.Chat.ID, update.CallbackQuery.From.ID, true
 	}
 	return 0, 0, false
 }
