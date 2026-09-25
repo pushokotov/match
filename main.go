@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -426,4 +426,3 @@ func itoa(n int) string {
 	return strconv.Itoa(n)
 }
 
-var _ = time.Second
