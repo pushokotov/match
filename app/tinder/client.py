@@ -13,28 +13,52 @@ class TinderAPIError(RuntimeError):
 class TinderClient:
     """Low-level synchronous client for the Tinder HTTP API used by the project."""
 
-    def __init__(self, base_url: str = "https://api.gotinder.com", locale: str = "ru", token: Optional[str] = None):
+    def __init__(
+        self,
+        base_url: str = "https://api.gotinder.com",
+        locale: str = "ru",
+        token: Optional[str] = None,
+    ):
         self.base_url = base_url.rstrip("/")
         self.locale = locale
         self.session = requests.Session()
-        self.session.headers.update({
-            "x-supported-image-formats": "webp,jpeg",
-            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "platform": "web",
-        })
+        self.session.headers.update(
+            {
+                "x-supported-image-formats": "webp,jpeg",
+                "user-agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/83.0.4103.61 Safari/537.36"
+                ),
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "platform": "web",
+            }
+        )
         if token:
             self.set_token(token)
 
+    @property
+    def is_authenticated(self) -> bool:
+        return bool(self.session.headers.get("X-Auth-Token"))
+
     def set_token(self, token: str) -> None:
+        token = token.strip()
+        if not token:
+            raise ValueError("Tinder auth token must not be empty")
         self.session.headers["X-Auth-Token"] = token
 
     def _url(self, path: str) -> str:
         return f"{self.base_url}{path}"
 
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
-        response = self.session.request(method, self._url(path), timeout=30, **kwargs)
+        try:
+            response = self.session.request(
+                method, self._url(path), timeout=30, **kwargs
+            )
+        except requests.RequestException as exc:
+            raise TinderAPIError(f"Tinder request failed: {exc}") from exc
+
         if not response.ok:
             raise TinderAPIError(
                 f"Tinder API returned {response.status_code}: {response.text[:500]}"
@@ -43,7 +67,9 @@ class TinderClient:
 
     def request_auth_phone(self, phone: str) -> requests.Response:
         payload = f"\n\x0e\n\x0c{phone.replace('+', '')}"
-        return self._request("POST", f"/v3/auth/login?locale={self.locale}", data=payload)
+        return self._request(
+            "POST", f"/v3/auth/login?locale={self.locale}", data=payload
+        )
 
     def authenticate_with_phone_code(self, phone: str, code: str) -> str:
         phone_payload = f"\n\x0e\n\x0c{phone.replace('+', '')}"
@@ -51,12 +77,16 @@ class TinderClient:
         response = self._request(
             "POST", f"/v3/auth/login?locale={self.locale}", data=payload
         )
-        match = re.search(r"(\x12\$)(.*)(\"\x18)", response.text)
+
+        # The legacy endpoint returns a protobuf-like payload. Parse bytes rather
+        # than response.text so decoding cannot corrupt the token or delimiters.
+        match = re.search(rb"\x12\$(.*?)\x22\x18", response.content, re.DOTALL)
         if not match:
             raise TinderAPIError(
                 "Tinder authentication response did not contain an auth token"
             )
-        token = match.group(2)
+
+        token = match.group(1).decode("utf-8", errors="strict").strip()
         self.set_token(token)
         return token
 
@@ -73,9 +103,9 @@ class TinderClient:
         data = self._request("GET", path).json()["data"]["user"]
         position = data.get("pos_info", {})
         if "state" in position:
-            city = position["state"]["name"]
+            city = position["state"].get("name", "")
         elif "city" in position:
-            city = position["city"]["name"]
+            city = position["city"].get("name", "")
         else:
             city = "Город не определен"
         country = position.get("country", {}).get("name", "")
@@ -85,7 +115,11 @@ class TinderClient:
         self._request(
             "POST",
             f"/v2/meta?locale={self.locale}",
-            json={"lat": latitude, "lon": longitude, "force_fetch_resources": True},
+            json={
+                "lat": latitude,
+                "lon": longitude,
+                "force_fetch_resources": True,
+            },
         )
 
     def get_recommendations(self) -> list[Recommendation]:
@@ -113,13 +147,16 @@ class TinderClient:
         return recommendations
 
     def like(self, user_id: str) -> None:
+        # Current third-party API wrappers document POST for /like/{id}.
         self._request("POST", f"/like/{user_id}?locale={self.locale}")
 
     def dislike(self, user_id: str, s_number: Optional[int] = None) -> None:
+        # Keep s_number from the recommendation when available, but use POST
+        # for the swipe action as documented by newer wrappers.
         path = f"/pass/{user_id}?locale={self.locale}"
         if s_number is not None:
             path += f"&s_number={s_number}"
-        self._request("GET", path)
+        self._request("POST", path)
 
     def get_matches_count(self) -> int:
         return len(self._get_all_matches())
